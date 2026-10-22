@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block body %}
+<h1>Instructor home</h1>
+<p><a href="/instructor/courses/new">Create a course</a></p>
+<h2>Your cohorts</h2>
+<table><tr><th>Course</th><th>Cohort</th><th>Status</th><th></th></tr>
+{% for c in cohorts %}<tr><td>{{ c.title }}</td><td>{{ c.cohort }}</td><td class="{{ c.status }}">{{ c.status }}</td>
+<td><a href="/instructor/courses/{{ c.course_id }}">Manage</a> &middot; <a href="/instructor/cohorts/{{ c.course_id }}/results">Results</a></td></tr>
+{% else %}<tr><td colspan="4">No cohorts assigned.</td></tr>{% endfor %}</table>{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block body %}
+<h1>Completion by client and department</h1><p><a href="/administrator/report.csv">Download CSV</a></p>
+<table><tr>{% for h in header %}<th>{{ h }}</th>{% endfor %}</tr>
+{% for r in data %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</table>{% endblock %}

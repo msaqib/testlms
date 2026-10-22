@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/instructor">&larr; Home</a></p>
+<h1>Results: {{ course.title }} ({{ course.cohort }})</h1>
+<p>{{ total }} enrolments &middot; <a href="/instructor/cohorts/{{ course.course_id }}/results.csv">Download every attempt as CSV</a></p>
+<table><tr><th>Learner</th><th>Department</th><th>Enrolled</th><th>Withdrawn</th><th>Outcome</th><th>Attempts</th><th>Average</th><th>Best</th></tr>
+{% for r in data %}<tr><td><a href="/instructor/cohorts/{{ course.course_id }}/learners/{{ r.learner_id }}">{{ r.full_name }}</a></td>
+<td>{{ r.department }}</td><td>{{ r.enrolled_on or '' }}</td><td>{{ r.withdrawn_on or '' }}</td><td>{{ r.outcome or '' }}</td>
+<td>{{ r.attempts }}</td><td>{{ r.average if r.average is not none else '' }}</td><td>{{ r.best if r.best is not none else '' }}</td></tr>{% endfor %}</table>
+{% if page > 1 %}<a href="?page={{ page - 1 }}">Previous</a>{% endif %} Page {{ page }} of {{ pages }}
+{% if page < pages %}<a href="?page={{ page + 1 }}">Next</a>{% endif %}{% endblock %}

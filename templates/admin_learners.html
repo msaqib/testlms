@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block body %}
+<h1>Learners</h1>
+<fieldset><legend>Create learner</legend>
+<form method="post" action="/administrator/learners">
+<label>Full name <input name="full_name" required></label>
+<label>Email <input name="email" type="email" required></label>
+<label>Initial password <input name="password" required></label>
+<label>Client <select name="client_id">{% for c in clients %}<option value="{{ c.client_id }}">{{ c.name }}</option>{% endfor %}</select></label>
+<label>Department <input name="department" required></label>
+<button>Create learner</button></form></fieldset>
+<form method="get"><label>Search <input name="q" value="{{ q }}"></label><button>Search</button></form>
+<p>{{ total }} learners</p>
+<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Client</th><th>Department</th><th>Status</th></tr>
+{% for l in learners %}<tr><td><a href="/administrator/learners/{{ l.learner_id }}">{{ l.learner_id }}</a></td>
+<td>{{ l.full_name }}</td><td>{{ l.email }}</td><td>{{ l.client }}</td><td>{{ l.department }}</td><td>{{ l.account_status }}</td></tr>{% endfor %}</table>
+{% if page > 1 %}<a href="?q={{ q }}&page={{ page - 1 }}">Previous</a>{% endif %}
+Page {{ page }} of {{ pages }}
+{% if page < pages %}<a href="?q={{ q }}&page={{ page + 1 }}">Next</a>{% endif %}{% endblock %}

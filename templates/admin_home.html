@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block body %}
+<h1>Administrator home</h1>
+{% if scoped %}<p>You see only your own client's learners.</p>{% endif %}
+<ul><li><a href="/administrator/learners">Learners</a></li>
+{% if not scoped %}<li><a href="/administrator/staffing">Instructor staffing</a></li>{% endif %}
+<li><a href="/administrator/report">Completion report</a></li></ul>{% endblock %}

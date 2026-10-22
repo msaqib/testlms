@@ -1,0 +1,4 @@
+<table><tr><th>Assessment</th><th>Course</th><th>{{ sort_link('Completed', 'date')|safe }}</th><th>{{ sort_link('Score', 'score')|safe }}</th><th>Marked by</th></tr>
+{% for a in attempts %}<tr><td>{{ a.title }}</td><td>{{ a.course }} ({{ a.cohort }})</td><td>{{ a.submitted_on or '' }}</td>
+<td>{{ a.score if a.score is not none else 'not marked' }}</td><td>{{ a.grader or ('auto' if a.type == 'Quiz' else '') }}</td></tr>
+{% else %}<tr><td colspan="5">No attempts.</td></tr>{% endfor %}</table>

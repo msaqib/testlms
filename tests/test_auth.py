@@ -11,7 +11,7 @@ class AuthenticationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.directory = tempfile.TemporaryDirectory()
         cls.database = str(Path(cls.directory.name) / "lms.db")
-        import_csvs(Path(__file__).parents[3] / "data", cls.database)
+        import_csvs(Path(__file__).parents[1] / "data", cls.database)
 
     @classmethod
     def tearDownClass(cls):
@@ -44,7 +44,7 @@ class AuthenticationTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(as_text=True), "Administrator home")
+        self.assertIn("Administrator home", response.get_data(as_text=True))
 
     def test_anonymous_user_cannot_open_administrator_home(self):
         response = self.client.get("/administrator")
@@ -59,7 +59,7 @@ class AuthenticationTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(as_text=True), "Instructor home")
+        self.assertIn("Instructor home", response.get_data(as_text=True))
 
     def test_learner_sign_in_lands_on_learner_home(self):
         response = self.client.post(
@@ -69,7 +69,7 @@ class AuthenticationTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(as_text=True), "Learner home")
+        self.assertIn("Learner home", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block body %}
+<h1>Instructor staffing</h1>
+<fieldset><legend>Assign an instructor</legend>
+<form method="post" action="/administrator/assignments">
+<label>Cohort <select name="course_id">{% for c in courses %}<option value="{{ c.course_id }}">{{ c.title }} ({{ c.cohort }})</option>{% endfor %}</select></label>
+<label>Instructor <select name="staff_id">{% for s in instructors %}<option value="{{ s.staff_id }}">{{ s.full_name }}</option>{% endfor %}</select></label>
+<button>Assign</button></form></fieldset>
+{% for c in courses %}<h3>{{ c.title }} ({{ c.cohort }})</h3>
+<table><tr><th>Instructor</th><th>Assigned</th><th>Taken off</th><th></th></tr>
+{% for h in by_course.get(c.course_id, []) %}<tr><td>{{ h.full_name }}</td><td>{{ h.assigned_on }}</td><td>{{ h.unassigned_on or 'current' }}</td>
+<td>{% if not h.unassigned_on %}<form method="post" action="/administrator/assignments/{{ h.id }}/end"><button>Take off</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="4">No instructor assigned.</td></tr>{% endfor %}</table>{% endfor %}{% endblock %}

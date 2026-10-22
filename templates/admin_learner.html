@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/administrator/learners">&larr; Learners</a></p>
+<h1>{{ learner.full_name }}</h1>
+<p>{{ learner.email }} &middot; department {{ learner.department }} &middot; status <strong>{{ learner.account_status }}</strong></p>
+<form method="post" action="/administrator/learners/{{ learner.learner_id }}/status">
+{% if learner.account_status == 'active' %}<input type="hidden" name="status" value="deactivated"><button>Deactivate account</button>
+{% else %}<input type="hidden" name="status" value="active"><button>Reactivate account</button>{% endif %}</form>
+<h2>Enrol in a cohort</h2>
+<form method="post" action="/administrator/learners/{{ learner.learner_id }}/enrol">
+<label>Cohort <select name="course_id">{% for c in courses %}<option value="{{ c.course_id }}">{{ c.title }} ({{ c.cohort }})</option>{% endfor %}</select></label>
+<button>Enrol</button></form>
+<h2>Enrolments</h2>
+<table><tr><th>Course</th><th>Enrolled</th><th>Enrolled by</th><th>Withdrawn</th><th>Outcome</th><th></th></tr>
+{% for e in enrolments %}<tr><td>{{ e.title }} ({{ e.cohort }})</td><td>{{ e.enrolled_on }}</td><td>{{ staff_name(e.enrolled_by) }}</td>
+<td>{{ e.withdrawn_on or '' }}</td><td>{{ e.outcome or '' }}</td>
+<td>{% if not e.withdrawn_on %}<form method="post" action="/administrator/enrolments/{{ e.enrolment_id }}/withdraw"><button>Withdraw</button></form>{% endif %}</td></tr>{% endfor %}</table>
+<h2>Attempts</h2>{% include "attempts_table.html" %}{% endblock %}

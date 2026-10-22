@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/instructor/cohorts/{{ course.course_id }}/results">&larr; Results</a></p>
+<h1>{{ learner.full_name }} &mdash; {{ course.title }} ({{ course.cohort }})</h1>
+{% include "attempts_table.html" %}{% endblock %}

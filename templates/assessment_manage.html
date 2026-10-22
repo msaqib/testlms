@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/instructor/courses/{{ a.course_id }}">&larr; Course</a></p>
+<h1>{{ a.title }} ({{ a.type }}, {{ a.status }})</h1>
+{% if a.type == 'Quiz' %}
+<h2>Questions</h2>
+<ol>{% for q in questions %}<li>{{ q.prompt }}<ul>{% for c in q.choices.split('\n') %}<li>{{ c }}{% if loop.index0 == q.correct %} &#10003;{% endif %}</li>{% endfor %}</ul></li>
+{% else %}<li>No questions yet.</li>{% endfor %}</ol>
+<fieldset><legend>Add a multiple-choice question</legend>
+<form method="post" action="/instructor/assessments/{{ a.assessment_id }}/questions">
+<label>Question <input name="prompt" size="60" required></label>
+{% for i in range(4) %}<label>Choice {{ i + 1 }} <input name="choice"></label>{% endfor %}
+<label>Correct choice number <select name="correct">{% for i in range(4) %}<option value="{{ i }}">{{ i + 1 }}</option>{% endfor %}</select></label>
+<button>Add question</button></form></fieldset>
+{% else %}
+<h2>Submissions</h2>
+<table><tr><th>Learner</th><th>Submitted</th><th>Answer</th><th>Score</th></tr>
+{% for s in submissions %}<tr><td>{{ s.full_name }}</td><td>{{ s.submitted_on }}</td><td style="white-space:pre-wrap">{{ s.submission or '' }}</td>
+<td>{% if s.score is none %}<form method="post" action="/instructor/attempts/{{ s.attempt_id }}/mark">
+<input name="score" type="number" min="0" max="100" step="any" required aria-label="Score"><button>Mark</button></form>{% else %}{{ s.score }}{% endif %}</td></tr>
+{% else %}<tr><td colspan="4">No submissions.</td></tr>{% endfor %}</table>{% endif %}{% endblock %}

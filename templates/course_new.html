@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block body %}
+<h1>Create a course</h1>
+<form method="post">
+<label>Title <input name="title" required></label>
+<label>Cohort name <input name="cohort" required placeholder="Nov 2026"></label>
+<label>Category <input name="category"></label>
+<label>Description <textarea name="description"></textarea></label>
+<label>Starts on <input name="starts_on" type="date" required></label>
+<label>Ends on <input name="ends_on" type="date"></label>
+<button>Create draft</button></form>{% endblock %}

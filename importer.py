@@ -1,96 +1,91 @@
 import csv
-import json
-import sqlite3
 import sys
 from pathlib import Path
 
 from werkzeug.security import generate_password_hash
 
-FILES = (
-    "clients.csv",
-    "staff.csv",
-    "courses.csv",
-    "course_staff.csv",
-    "assessments.csv",
-    "learners.csv",
-    "enrolments.csv",
-    "attempts.csv",
-)
-INITIAL_PASSWORD_HASH = generate_password_hash("password")
+import db
+
+# file -> (table, natural key columns, foreign keys that must resolve)
+TABLES = {
+    "clients.csv": ("clients", ("client_id",), {}),
+    "staff.csv": ("staff", ("staff_id",), {}),
+    "courses.csv": ("courses", ("course_id",), {}),
+    "course_staff.csv": (
+        "course_staff",
+        ("course_id", "staff_id", "assigned_on"),
+        {"course_id": "courses", "staff_id": "staff"},
+    ),
+    "assessments.csv": ("assessments", ("assessment_id",), {"course_id": "courses"}),
+    "learners.csv": ("learners", ("learner_id",), {"client_id": "clients"}),
+    "enrolments.csv": (
+        "enrolments",
+        ("enrolment_id",),
+        {"learner_id": "learners", "course_id": "courses"},
+    ),
+    "attempts.csv": (
+        "attempts",
+        ("attempt_id",),
+        {"assessment_id": "assessments", "learner_id": "learners"},
+    ),
+}
+PASSWORD_TABLES = ("staff", "learners")
 
 
-def import_csvs(source, database):
-    accepted = 0
+def import_csvs(source, database_path):
+    initial_hash = generate_password_hash("password")
+    accepted = skipped = 0
     rejected = []
-    connection = sqlite3.connect(database)
-    connection.execute(
-        """
-        CREATE TABLE IF NOT EXISTS imported_records (
-            source_file TEXT NOT NULL,
-            source_id TEXT NOT NULL,
-            data TEXT NOT NULL,
-            PRIMARY KEY (source_file, source_id)
-        )
-        """
-    )
-    connection.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            username TEXT PRIMARY KEY,
-            password TEXT NOT NULL DEFAULT '',
-            role TEXT NOT NULL,
-            active INTEGER NOT NULL
-        )
-        """
-    )
-    with connection:
-        for filename in FILES:
+    database = db.connect(database_path)
+    ids = {}
+    with database:
+        for filename, (table, key, foreign_keys) in TABLES.items():
+            existing = {
+                tuple(str(v) for v in row)
+                for row in database.execute(f"SELECT {','.join(key)} FROM {table}")
+            }
+            ids[table] = {k[0] for k in existing} if len(key) == 1 else set()
             with (Path(source) / filename).open(newline="", encoding="utf-8") as file:
-                for row in csv.DictReader(file):
-                    source_id = row[next(iter(row))]
-                    if not source_id:
-                        rejected.append({"file": filename, "reason": "missing source ID"})
+                reader = csv.DictReader(file)
+                columns = reader.fieldnames + (["password"] if table in PASSWORD_TABLES else [])
+                sql = f"INSERT INTO {table} ({','.join(columns)}) VALUES ({','.join('?' * len(columns))})"
+                for line, row in enumerate(reader, start=2):
+                    row = {k: (v.strip() or None) if v else None for k, v in row.items()}
+                    if any(row[k] is None for k in key):
+                        rejected.append({"file": filename, "line": line, "reason": "missing source ID"})
                         continue
-                    cursor = connection.execute(
-                        """
-                        INSERT OR IGNORE INTO imported_records (source_file, source_id, data)
-                        VALUES (?, ?, ?)
-                        """,
-                        (filename, source_id, json.dumps(row, sort_keys=True)),
+                    missing = next(
+                        (c for c, parent in foreign_keys.items() if row[c] is not None and row[c] not in ids[parent]),
+                        None,
                     )
-                    accepted += cursor.rowcount
-                    if cursor.rowcount and filename == "staff.csv":
-                        connection.execute(
-                            """
-                            INSERT OR IGNORE INTO users (username, password, role, active)
-                            VALUES (?, ?, ?, ?)
-                            """,
-                            (
-                                row["email"],
-                                INITIAL_PASSWORD_HASH,
-                                row["role"],
-                                not row["left_on"],
-                            ),
-                        )
-                    if cursor.rowcount and filename == "learners.csv":
-                        connection.execute(
-                            """
-                            INSERT OR IGNORE INTO users (username, password, role, active)
-                            VALUES (?, ?, 'learner', ?)
-                            """,
-                            (
-                                row["email"],
-                                INITIAL_PASSWORD_HASH,
-                                row["account_status"] == "active",
-                            ),
-                        )
-    connection.close()
-    return {"accepted": accepted, "rejected": rejected}
+                    if missing:
+                        rejected.append({
+                            "file": filename, "line": line,
+                            "reason": f"{missing} {row[missing]!r} does not exist",
+                        })
+                        continue
+                    if tuple(row[k] for k in key) in existing:
+                        skipped += 1
+                        continue
+                    if table in PASSWORD_TABLES:
+                        row["password"] = initial_hash
+                    try:
+                        database.execute(sql, [row[c] for c in columns])
+                    except Exception as error:
+                        rejected.append({"file": filename, "line": line, "reason": str(error)})
+                        continue
+                    accepted += 1
+                    existing.add(tuple(row[k] for k in key))
+                    if len(key) == 1:
+                        ids[table].add(row[key[0]])
+    database.close()
+    return {"accepted": accepted, "skipped": skipped, "rejected": rejected}
 
 
 if __name__ == "__main__":
     result = import_csvs(sys.argv[1], sys.argv[2])
     print(f"accepted: {result['accepted']}")
+    print(f"already loaded: {result['skipped']}")
     print(f"rejected: {len(result['rejected'])}")
-    for rejection in result["rejected"]:
-        print(f"{rejection['file']}: {rejection['reason']}")
+    for r in result["rejected"]:
+        print(f"{r['file']} line {r['line']}: {r['reason']}")

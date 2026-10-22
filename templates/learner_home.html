@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}
+<h1>Learner home</h1>
+<h2>My enrolments</h2>
+<table><tr><th>Course</th><th>Enrolled</th><th>Enrolled by</th><th>Withdrawn</th><th>Outcome</th><th></th></tr>
+{% for e in enrolments %}<tr><td>{% if e.status == 'published' and not e.withdrawn_on %}<a href="/learner/courses/{{ e.course_id }}">{{ e.title }} ({{ e.cohort }})</a>{% else %}{{ e.title }} ({{ e.cohort }}){% endif %}</td>
+<td>{{ e.enrolled_on or '' }}</td><td>{{ staff_name(e.enrolled_by) }}</td><td>{{ e.withdrawn_on or '' }}</td><td>{{ e.outcome or '' }}</td>
+<td>{% if not e.withdrawn_on %}<form method="post" action="/learner/enrolments/{{ e.enrolment_id }}/withdraw"><button>Withdraw</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="6">Not enrolled in anything.</td></tr>{% endfor %}</table>
+<h2>Available cohorts</h2>
+<table><tr><th>Course</th><th>Cohort</th><th>Starts</th><th></th></tr>
+{% for c in available %}<tr><td>{{ c.title }}</td><td>{{ c.cohort }}</td><td>{{ c.starts_on }}</td>
+<td><form method="post" action="/learner/enrol/{{ c.course_id }}"><button>Enrol</button></form></td></tr>{% endfor %}</table>
+<h2>My attempts</h2>{% include "attempts_table.html" %}{% endblock %}

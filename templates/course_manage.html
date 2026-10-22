@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/instructor">&larr; Home</a></p>
+<h1>{{ course.title }} ({{ course.cohort }})</h1>
+<p>Status: <strong class="{{ course.status }}">{{ course.status }}</strong>
+&middot; <a href="/instructor/cohorts/{{ course.course_id }}/results">Results</a></p>
+{% if course.status != 'published' %}<form method="post" action="/instructor/courses/{{ course.course_id }}/publish"><button>Publish course</button></form>{% endif %}
+<h2>Pages</h2>
+{% for p in pages %}<h3>{{ p.title }}</h3><p style="white-space:pre-wrap">{{ p.body }}</p>
+{% for f in files if f.page_id == p.page_id %}<p><a href="/files/{{ f.attachment_id }}">{{ f.filename }}</a></p>{% endfor %}{% else %}<p>No pages yet.</p>{% endfor %}
+<fieldset><legend>Add a page</legend>
+<form method="post" action="/instructor/courses/{{ course.course_id }}/pages" enctype="multipart/form-data">
+<label>Title <input name="title" required></label>
+<label>Text <textarea name="body" rows="5" cols="60"></textarea></label>
+<label>Image or PDF <input type="file" name="file" accept=".png,.jpg,.jpeg,.gif,.pdf"></label>
+<button>Add page</button></form></fieldset>
+<h2>Quizzes and assignments</h2>
+<table><tr><th>Title</th><th>Type</th><th>Status</th><th>Questions</th><th></th></tr>
+{% for a in assessments %}<tr><td>{{ a.title }}</td><td>{{ a.type }}</td><td class="{{ a.status }}">{{ a.status }}</td>
+<td>{{ a.questions if a.type == 'Quiz' else '' }}</td>
+<td><a href="/instructor/assessments/{{ a.assessment_id }}">Open</a>
+{% if a.status != 'published' %}<form method="post" action="/instructor/assessments/{{ a.assessment_id }}/publish" style="display:inline"><button>Publish</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="5">None yet.</td></tr>{% endfor %}</table>
+<fieldset><legend>Add a quiz or assignment</legend>
+<form method="post" action="/instructor/courses/{{ course.course_id }}/assessments">
+<label>Type <select name="type"><option>Quiz</option><option>Assignment</option></select></label>
+<label>Title <input name="title" required></label>
+<label>Due on <input name="due_on" type="date"></label>
+<label>Weight % <input name="weight_pct" type="number" min="0" max="100"></label>
+<button>Add</button></form></fieldset>{% endblock %}

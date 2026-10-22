@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/learner">&larr; Home</a></p>
+<h1>{{ course.title }} ({{ course.cohort }})</h1><p>{{ course.description or '' }}</p>
+{% for p in pages %}<h2>{{ p.title }}</h2><p style="white-space:pre-wrap">{{ p.body }}</p>
+{% for f in files if f.page_id == p.page_id %}
+{% if f.filename.lower().endswith('.pdf') %}<p><a href="/files/{{ f.attachment_id }}">{{ f.filename }}</a></p>
+{% else %}<img src="/files/{{ f.attachment_id }}" alt="{{ f.filename }}" style="max-width:100%">{% endif %}{% endfor %}{% endfor %}
+<h2>Quizzes and assignments</h2>
+<ul>{% for a in assessments %}<li><a href="/learner/assessments/{{ a.assessment_id }}">{{ a.title }}</a> ({{ a.type }}{% if a.due_on %}, due {{ a.due_on }}{% endif %})</li>
+{% else %}<li>Nothing yet.</li>{% endfor %}</ul>{% endblock %}

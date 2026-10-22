@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}
+<p><a href="/learner/courses/{{ course.course_id }}">&larr; {{ course.title }}</a></p>
+<h1>{{ a.title }}</h1>
+<form method="post">
+{% if a.type == 'Quiz' %}
+{% for q in questions %}<fieldset><legend>{{ q.prompt }}</legend>
+{% for o in q.options %}<label><input type="radio" name="q{{ q.question_id }}" value="{{ loop.index0 }}" required> {{ o }}</label>{% endfor %}</fieldset>
+{% else %}<p>This quiz has no questions yet.</p>{% endfor %}
+{% if questions %}<button>Submit quiz</button>{% endif %}
+{% else %}
+<label>Your answer <textarea name="submission" rows="6" cols="60" required></textarea></label><button>Submit assignment</button>
+{% endif %}</form>
+<h2>Your attempts</h2>{% include "attempts_table.html" %}{% endblock %}

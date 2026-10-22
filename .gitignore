@@ -1,1 +1,3 @@
 .worktrees/
+lms.db
+__pycache__/
