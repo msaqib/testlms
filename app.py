@@ -435,6 +435,12 @@ def create_app(config=None):
     @role_required("instructor")
     def instructor_publish(course_id):
         own_course(course_id)
+        content = row("SELECT (SELECT COUNT(*) FROM pages WHERE course_id = ?) + "
+                      "(SELECT COUNT(*) FROM assessments WHERE course_id = ?) AS n",
+                      course_id, course_id)["n"]
+        if content == 0 and not request.form.get("confirm"):
+            flash("This course has no pages or quizzes. Publish it anyway?")
+            return redirect(f"/instructor/courses/{course_id}")
         run("UPDATE courses SET status = 'published' WHERE course_id = ?", course_id)
         run("UPDATE assessments SET status = 'published', published_on = ? "
             "WHERE course_id = ? AND status != 'published'", today(), course_id)

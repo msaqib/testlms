@@ -3,7 +3,7 @@
 <h1>{{ course.title }} ({{ course.cohort }})</h1>
 <p>Status: <strong class="{{ course.status }}">{{ course.status }}</strong>
 &middot; <a href="/instructor/cohorts/{{ course.course_id }}/results">Results</a></p>
-{% if course.status != 'published' %}<form method="post" action="/instructor/courses/{{ course.course_id }}/publish"><button>Publish course</button></form>{% endif %}
+{% if course.status != 'published' %}{% if pages or assessments %}<form method="post" action="/instructor/courses/{{ course.course_id }}/publish"><button>Publish course</button></form>{% else %}<p><strong>This course has no pages or quizzes.</strong></p><form method="post" action="/instructor/courses/{{ course.course_id }}/publish"><input type="hidden" name="confirm" value="1"><button>Publish anyway</button></form>{% endif %}{% endif %}
 <h2>Pages</h2>
 {% for p in pages %}<h3>{{ p.title }}</h3><p style="white-space:pre-wrap">{{ p.body }}</p>
 {% for f in files if f.page_id == p.page_id %}<p><a href="/files/{{ f.attachment_id }}">{{ f.filename }}</a></p>{% endfor %}{% else %}<p>No pages yet.</p>{% endfor %}

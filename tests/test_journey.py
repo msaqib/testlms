@@ -88,6 +88,26 @@ class JourneyTests(unittest.TestCase):
         results = teacher.get(f"/instructor/cohorts/{course}/results").get_data(as_text=True)
         self.assertIn("Zed Tester", results)
 
+    def test_empty_course_warns_before_publishing(self):
+        teacher = self.login(INSTRUCTOR)
+        r = teacher.post("/instructor/courses/new", data={
+            "title": "Empty Warn Course", "cohort": "E1", "starts_on": "2026-01-01"})
+        course = r.headers["Location"].rsplit("/", 1)[1]
+        r = teacher.post(f"/instructor/courses/{course}/publish")
+        self.assertEqual(r.status_code, 302)
+        page = teacher.get(f"/instructor/courses/{course}").get_data(as_text=True)
+        self.assertIn("This course has no pages or quizzes. Publish it anyway?", page)
+        self.assertIn("Publish anyway", page)
+        con = sqlite3.connect(self.database)
+        status = con.execute("SELECT status FROM courses WHERE course_id=?", (course,)).fetchone()[0]
+        con.close()
+        self.assertEqual(status, "draft")
+        teacher.post(f"/instructor/courses/{course}/publish", data={"confirm": "1"})
+        con = sqlite3.connect(self.database)
+        status = con.execute("SELECT status FROM courses WHERE course_id=?", (course,)).fetchone()[0]
+        con.close()
+        self.assertEqual(status, "published")
+
 
 if __name__ == "__main__":
     unittest.main()
