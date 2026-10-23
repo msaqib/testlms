@@ -615,7 +615,9 @@ def create_app(config=None):
     def learner_home():
         lid = g.user["id"]
         enrolments = rows(
-            "SELECT e.*, c.title, c.cohort, c.status FROM enrolments e JOIN courses c "
+            "SELECT e.*, c.title, c.cohort, c.status, (SELECT MAX(a.score) FROM attempts a "
+            "WHERE a.learner_id = e.learner_id AND a.course_id = e.course_id) AS best "
+            "FROM enrolments e JOIN courses c "
             "ON c.course_id = e.course_id WHERE e.learner_id = ? ORDER BY e.enrolled_on DESC", lid)
         available = rows(
             "SELECT * FROM courses c WHERE status = 'published' AND NOT EXISTS (SELECT 1 FROM "

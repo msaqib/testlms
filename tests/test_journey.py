@@ -83,6 +83,8 @@ class JourneyTests(unittest.TestCase):
             "SELECT score FROM attempts WHERE assessment_id=? ORDER BY attempt_id", (aid,))]
         con.close()
         self.assertEqual(scores, [100, 0])  # both attempts kept
+        home = learner.get("/learner").get_data(as_text=True)
+        self.assertRegex(home, r"(?s)Journey Course.*?<td>100\.0%</td>")
         results = teacher.get(f"/instructor/cohorts/{course}/results").get_data(as_text=True)
         self.assertIn("Zed Tester", results)
 
