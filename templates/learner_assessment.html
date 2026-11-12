@@ -10,4 +10,5 @@
 {% else %}
 <label>Your answer <textarea name="submission" rows="6" cols="60" required></textarea></label><button>Submit assignment</button>
 {% endif %}</form>
-<h2>Your attempts</h2>{% include "attempts_table.html" %}{% endblock %}
+{% if counted %}<p>Your score: {{ counted.score }}% (best of {{ scored_count }} attempt{{ '' if scored_count == 1 else 's' }}).</p>{% endif %}
+<h2>Your attempts</h2>{% set counted_id = counted.attempt_id if counted else None %}{% include "attempts_table.html" %}{% endblock %}

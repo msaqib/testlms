@@ -88,6 +88,35 @@ class JourneyTests(unittest.TestCase):
         results = teacher.get(f"/instructor/cohorts/{course}/results").get_data(as_text=True)
         self.assertIn("Zed Tester", results)
 
+    def test_quiz_page_marks_the_best_scored_attempt_as_counted(self):
+        teacher = self.login(INSTRUCTOR)
+        r = teacher.post("/instructor/courses/new", data={
+            "title": "Counted Course", "cohort": "C1", "starts_on": "2026-01-01"})
+        course = r.headers["Location"].rsplit("/", 1)[1]
+        teacher.post(f"/instructor/courses/{course}/assessments",
+                     data={"type": "Quiz", "title": "Counted Quiz"})
+        con = sqlite3.connect(self.database)
+        aid = con.execute("SELECT max(assessment_id) FROM assessments").fetchone()[0]
+        con.close()
+        teacher.post(f"/instructor/assessments/{aid}/questions", data={
+            "prompt": "1+1?", "choice": ["1", "2", "3", ""], "correct": "1"})
+        teacher.post(f"/instructor/courses/{course}/publish", data={"confirm": "1"})
+        self.login(ADMIN).post("/administrator/learners", data={
+            "full_name": "Counted Tester", "email": "counted@example.com", "password": "secret1",
+            "client_id": "CL01", "department": "QA"})
+        learner = self.login("counted@example.com", "secret1")
+        learner.post(f"/learner/enrol/{course}")
+        page = learner.get(f"/learner/assessments/{aid}").get_data(as_text=True)
+        self.assertNotIn("Your score:", page)
+        qid = re.search(r'name="q(\d+)"', page).group(1)
+        learner.post(f"/learner/assessments/{aid}", data={f"q{qid}": "0"})
+        learner.post(f"/learner/assessments/{aid}", data={f"q{qid}": "1"})
+        learner.post(f"/learner/assessments/{aid}", data={f"q{qid}": "0"})
+        page = learner.get(f"/learner/assessments/{aid}").get_data(as_text=True)
+        self.assertIn("Your score: 100.0% (best of 3 attempts).", page)
+        self.assertEqual(page.count("(counts)"), 1)
+        self.assertRegex(page, r"(?s)<td>100\.0 \(counts\)</td>")
+
     def test_empty_course_warns_before_publishing(self):
         teacher = self.login(INSTRUCTOR)
         r = teacher.post("/instructor/courses/new", data={

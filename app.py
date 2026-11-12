@@ -696,7 +696,11 @@ def create_app(config=None):
             return redirect(request.path)
         attempts = sorted_attempts("a.learner_id = ? AND a.assessment_id = ?",
                                    (g.user["id"], assessment_id))
+        scored = [x for x in attempts if x["score"] is not None]
+        counted = min(scored, key=lambda x: (-x["score"], x["submitted_on"], x["attempt_id"]),
+                      default=None)
         return render_template("learner_assessment.html", a=a, course=course, attempts=attempts,
+                               counted=counted, scored_count=len(scored),
                                questions=[{**dict(q), "options": q["choices"].split("\n")}
                                           for q in questions])
 
