@@ -55,6 +55,10 @@ class JourneyTests(unittest.TestCase):
         learner = self.login("zed@example.com", "secret1")
         self.assertEqual(learner.get("/learner").status_code, 200)
 
+        con = sqlite3.connect(self.database)
+        con.execute("UPDATE staff SET client_id = 'CL01' WHERE email = ?", (INSTRUCTOR,))
+        con.commit()
+        con.close()
         teacher = self.login(INSTRUCTOR)
         r = teacher.post("/instructor/courses/new", data={
             "title": "Journey Course", "cohort": "J1", "starts_on": "2026-01-01"})
@@ -87,6 +91,24 @@ class JourneyTests(unittest.TestCase):
         self.assertRegex(home, r"(?s)Journey Course.*?<td>100\.0%</td>")
         results = teacher.get(f"/instructor/cohorts/{course}/results").get_data(as_text=True)
         self.assertIn("Zed Tester", results)
+
+    def test_client_bound_learner_cannot_see_another_clients_course(self):
+        con = sqlite3.connect(self.database)
+        con.execute("UPDATE staff SET client_id = 'CL01' WHERE email = ?", (INSTRUCTOR,))
+        con.commit()
+        con.close()
+        teacher = self.login(INSTRUCTOR)
+        response = teacher.post("/instructor/courses/new", data={
+            "title": "Client One Course", "cohort": "C1", "starts_on": "2026-01-01"})
+        course = response.headers["Location"].rsplit("/", 1)[1]
+        teacher.post(f"/instructor/courses/{course}/publish", data={"confirm": "1"})
+
+        other_client_learner = self.login("eoin.okafor.516@example.com")
+        page = other_client_learner.get("/learner").get_data(as_text=True)
+
+        self.assertNotIn("Client One Course", page)
+        self.assertNotIn("Foundations of Workplace Data Analysis", page)
+        self.assertIn(other_client_learner.post(f"/learner/enrol/{course}").status_code, (403, 404))
 
     def test_quiz_page_marks_the_best_scored_attempt_as_counted(self):
         teacher = self.login(INSTRUCTOR)
