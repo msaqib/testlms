@@ -20,6 +20,20 @@ In case of ANY ambiguity, please ask the user for clarification.
 - Do not expose tokens or other credentials.
 - An explicit invocation of this skill authorizes its default full engagement workflow, including its reaction and reply. For all other use, never post a reply, reaction, or other write action without an explicit user request.
 
+## Repository Issue Change Workflow
+
+For an approved issue change:
+
+1. Implement and verify the smallest complete change, including directly affected tests.
+2. Run a focused security review before opening a pull request. Report each credible finding on the linked issue with severity, affected files, impact, confidence, and remediation status. Do not include proof-of-concept payloads or credentials. Use a private security channel unless the user explicitly directs a public issue comment.
+3. Before reporting completion, use Chrome DevTools to exercise user-visible behavior. State when browser verification cannot be performed.
+4. Create a focused branch from `main`, commit and push only the issue's implementation, tests, and required evidence, then open a PR to `main`.
+5. Link the issue in the PR and state the tests, security-review outcome, risk, and rollback.
+6. Leave the PR unmerged. A human must approve and merge it; never self-approve, merge, enable auto-merge, or bypass missing checks.
+7. Post an issue status comment with the PR URL and that manual approval is pending. Only report delivery after confirming the PR was manually merged.
+
+This workflow applies even when GitHub branch protection is not configured.
+
 ## Fetch issues
 
 List issues, including closed ones when the user asks for all issues:
@@ -79,7 +93,7 @@ For requests that require current external information, fetch a reliable source 
 
 When handling a user-visible application change or feature request, use
 `capturing-ui-evidence` before reporting completion. After the implementation,
-tests, evidence commit, and push have succeeded:
+tests, evidence commit, push, and PR have succeeded:
 
 1. Identify the most recently updated open issue using the command in
    **Default full engagement workflow**.
@@ -96,6 +110,7 @@ tests, evidence commit, and push have succeeded:
    **Passed:** <each validation command and outcome, or `None`>
    **Failed:** <each failed validation command and outcome, or `None`>
    **Commit:** <immutable commit URL>
+   **Pull request:** <PR URL; awaiting manual approval>
 
    **Snapshot:**
    ![<description>](<immutable raw screenshot URL>)

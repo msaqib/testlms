@@ -6,8 +6,6 @@ Reviewed: 2026-11-12
 
 | Severity | Location | Finding | Status |
 |---|---|---|---|
-| High | `app.py:184` | Learners without a `client_id` bypass the tenant comparison and can enrol in and view another client's course. | Open |
+| Medium | `app.py:147-149`; `templates/attempts_table.html:1` | Reflected XSS: `sort_link` inserts arbitrary query parameters into HTML marked safe without URL or attribute encoding. | Open |
 
-Do not treat a missing learner client as global access. Require every learner's
-`client_id` to equal the course client, and reserve cross-client access for an
-explicit privileged role.
+Use URL encoding or Jinja URL generation rather than constructing safe HTML from untrusted query parameters, and remove the `|safe` boundary.
