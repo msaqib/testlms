@@ -177,7 +177,13 @@ def create_app(config=None):
     def own_course(course_id):
         if not is_assigned(course_id):
             abort(403)
-        return row("SELECT * FROM courses WHERE course_id = ?", course_id)
+        return course_in_scope(course_id)
+
+    def course_in_scope(course_id):
+        course = row("SELECT * FROM courses WHERE course_id = ?", course_id)
+        if not course or (g.user["client_id"] and course["client_id"] != g.user["client_id"]):
+            abort(404)
+        return course
 
     def learner_in_scope(learner_id):
         learner = row("SELECT * FROM learners WHERE learner_id = ?", learner_id)
@@ -186,8 +192,8 @@ def create_app(config=None):
         return learner
 
     def enrol(learner_id, course_id, by):
-        course = row("SELECT status FROM courses WHERE course_id = ?", course_id)
-        if not course or course["status"] != "published":
+        course = course_in_scope(course_id)
+        if course["status"] != "published":
             flash("That course is not published.")
         elif row("SELECT 1 FROM enrolments WHERE learner_id = ? AND course_id = ? "
                  "AND withdrawn_on IS NULL AND outcome IS NULL", learner_id, course_id):
@@ -275,10 +281,18 @@ def create_app(config=None):
         learner = learner_in_scope(learner_id)
         enrolments = rows(
             "SELECT e.*, c.title, c.cohort FROM enrolments e JOIN courses c ON c.course_id = e.course_id "
-            "WHERE e.learner_id = ? ORDER BY e.enrolled_on DESC", learner_id)
-        courses = rows("SELECT course_id, title, cohort FROM courses WHERE status = 'published' "
-                       "ORDER BY title, starts_on")
-        attempts = sorted_attempts("a.learner_id = ?", (learner_id,))
+            "WHERE e.learner_id = ? AND (? IS NULL OR c.client_id = ?) ORDER BY e.enrolled_on DESC",
+            learner_id, g.user["client_id"], g.user["client_id"])
+        courses = rows(
+            "SELECT course_id, title, cohort FROM courses WHERE status = 'published' "
+            "AND (? IS NULL OR client_id = ?) ORDER BY title, starts_on",
+            g.user["client_id"], g.user["client_id"])
+        attempt_scope = "a.learner_id = ?"
+        attempt_args = [learner_id]
+        if g.user["client_id"]:
+            attempt_scope += " AND c.client_id = ?"
+            attempt_args.append(g.user["client_id"])
+        attempts = sorted_attempts(attempt_scope, attempt_args)
         return render_template("admin_learner.html", learner=learner, enrolments=enrolments,
                                courses=courses, attempts=attempts)
 
@@ -386,10 +400,12 @@ def create_app(config=None):
     @app.get("/instructor")
     @role_required("instructor")
     def instructor_home():
+        scope = " AND c.client_id = ?" if g.user["client_id"] else ""
         cohorts = rows(
             "SELECT c.* FROM courses c JOIN course_staff cs ON cs.course_id = c.course_id "
             "WHERE cs.staff_id = ? AND (cs.unassigned_on IS NULL OR cs.unassigned_on > ?) "
-            "GROUP BY c.course_id ORDER BY c.starts_on DESC", g.user["id"], today())
+            f"{scope} GROUP BY c.course_id ORDER BY c.starts_on DESC",
+            g.user["id"], today(), *([g.user["client_id"]] if scope else []))
         return render_template("instructor_home.html", cohorts=cohorts)
 
     @app.route("/instructor/courses/new", methods=["GET", "POST"])
@@ -405,9 +421,9 @@ def create_app(config=None):
             if row("SELECT 1 FROM courses WHERE course_id = ?", slug):
                 slug = f"{slug}-{secrets.token_hex(2)}"
             run("INSERT INTO courses (course_id, title, category, description, cohort, starts_on, "
-                "ends_on, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')", slug, title,
+                "ends_on, status, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?)", slug, title,
                 f.get("category") or None, f.get("description") or None, cohort,
-                f.get("starts_on"), f.get("ends_on") or None)
+                f.get("starts_on"), f.get("ends_on") or None, g.user["client_id"] or "CL07")
             run("INSERT INTO course_staff (course_id, staff_id, role, assigned_on) "
                 "VALUES (?, ?, 'lead', ?)", slug, g.user["id"], today())
             return redirect(f"/instructor/courses/{slug}")
@@ -471,15 +487,16 @@ def create_app(config=None):
     def attachment(attachment_id):
         if not g.user:
             abort(403)
-        f = row("SELECT a.*, p.course_id, c.status FROM attachments a JOIN pages p "
+        f = row("SELECT a.*, p.course_id, c.status, c.client_id FROM attachments a JOIN pages p "
                 "ON p.page_id = a.page_id JOIN courses c ON c.course_id = p.course_id "
                 "WHERE a.attachment_id = ?", attachment_id)
         if not f:
             abort(404)
         if g.user["role"] == "instructor":
-            allowed = is_assigned(f["course_id"])
+            allowed = is_assigned(f["course_id"]) and (
+                not g.user["client_id"] or f["client_id"] == g.user["client_id"])
         elif g.user["role"] == "learner":
-            allowed = f["status"] == "published" and row(
+            allowed = f["client_id"] == g.user["client_id"] and f["status"] == "published" and row(
                 "SELECT 1 FROM enrolments WHERE learner_id = ? AND course_id = ? "
                 "AND withdrawn_on IS NULL", g.user["id"], f["course_id"])
         else:
@@ -624,13 +641,15 @@ def create_app(config=None):
             "SELECT e.*, c.title, c.cohort, c.status, (SELECT MAX(a.score) FROM attempts a "
             "WHERE a.learner_id = e.learner_id AND a.course_id = e.course_id) AS best "
             "FROM enrolments e JOIN courses c "
-            "ON c.course_id = e.course_id WHERE e.learner_id = ? ORDER BY e.enrolled_on DESC", lid)
+            "ON c.course_id = e.course_id WHERE e.learner_id = ? AND c.client_id = ? "
+            "ORDER BY e.enrolled_on DESC", lid, g.user["client_id"])
         available = rows(
-            "SELECT * FROM courses c WHERE status = 'published' AND NOT EXISTS (SELECT 1 FROM "
+            "SELECT * FROM courses c WHERE status = 'published' AND c.client_id = ? AND NOT EXISTS (SELECT 1 FROM "
             "enrolments e WHERE e.course_id = c.course_id AND e.learner_id = ? "
             "AND e.withdrawn_on IS NULL AND e.outcome IS NULL) AND (ends_on IS NULL OR ends_on >= ?) "
-            "ORDER BY title, starts_on", lid, today())
-        attempts = sorted_attempts("a.learner_id = ?", (lid,))
+            "ORDER BY title, starts_on", g.user["client_id"], lid, today())
+        attempts = sorted_attempts("a.learner_id = ? AND c.client_id = ?",
+                                   (lid, g.user["client_id"]))
         return render_template("learner_home.html", enrolments=enrolments, available=available,
                                attempts=attempts)
 
@@ -647,8 +666,8 @@ def create_app(config=None):
         return redirect("/learner")
 
     def enrolled_course(course_id):
-        course = row("SELECT * FROM courses WHERE course_id = ? AND status = 'published'", course_id)
-        if not course or not row(
+        course = course_in_scope(course_id)
+        if course["status"] != "published" or not row(
                 "SELECT 1 FROM enrolments WHERE learner_id = ? AND course_id = ? "
                 "AND withdrawn_on IS NULL", g.user["id"], course_id):
             abort(403)

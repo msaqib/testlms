@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS staff (
     password TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS courses (
     course_id TEXT PRIMARY KEY, title TEXT, category TEXT, description TEXT, cohort TEXT,
-    starts_on TEXT, ends_on TEXT, length_days INTEGER, status TEXT NOT NULL DEFAULT 'published');
+    starts_on TEXT, ends_on TEXT, length_days INTEGER, status TEXT NOT NULL DEFAULT 'published',
+    client_id TEXT);
 CREATE TABLE IF NOT EXISTS course_staff (
     id INTEGER PRIMARY KEY AUTOINCREMENT, course_id TEXT NOT NULL, staff_id TEXT NOT NULL,
     role TEXT, assigned_on TEXT NOT NULL, unassigned_on TEXT,
@@ -53,4 +54,9 @@ def connect(path):
     database = sqlite3.connect(path)
     database.row_factory = sqlite3.Row
     database.executescript(SCHEMA)
+    columns = {column["name"] for column in database.execute("PRAGMA table_info(courses)")}
+    if "client_id" not in columns:
+        database.execute("ALTER TABLE courses ADD COLUMN client_id TEXT")
+    database.execute("UPDATE courses SET client_id = 'CL07' WHERE client_id IS NULL")
+    database.commit()
     return database
